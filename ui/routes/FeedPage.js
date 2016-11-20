@@ -4,7 +4,7 @@ import gql from 'graphql-tag';
 
 import Feed from '../components/Feed';
 import Loading from '../components/Loading';
-import VoteButtons from '../components/VoteButtons';
+import FeedEntry from '../components/FeedEntry';
 
 class FeedPage extends React.Component {
   constructor() {
@@ -48,65 +48,41 @@ const FEED_QUERY = gql`
       login
     }
     feed(type: $type, offset: $offset, limit: $limit) {
-      createdAt
-      commentCount
-      id
-      postedBy {
-        login
-        html_url
-      }
-      ...voteInfo
-      repository {
-        name
-        full_name
-        description
-        html_url
-        stargazers_count
-        open_issues_count
-        owner {
-          avatar_url
-        }
-      }
+      ...FeedEntry
     }
   }
+  ${FeedEntry.fragments.entry}
 `;
 const ITEMS_PER_PAGE = 10;
 const withData = graphql(FEED_QUERY, {
-  options(props) {
-    return {
-      fragments: VoteButtons.fragment,
+  options: props => ({
+    variables: {
+      type: (
+        props.params &&
+        props.params.type &&
+        props.params.type.toUpperCase()
+      ) || 'TOP',
+      offset: 0,
+      limit: ITEMS_PER_PAGE,
+    },
+    forceFetch: true,
+  }),
+  props: ({ data: { loading, feed, currentUser, fetchMore } }) => ({
+    loading,
+    feed,
+    currentUser,
+    fetchMore: () => fetchMore({
       variables: {
-        type: (
-          props.params &&
-          props.params.type &&
-          props.params.type.toUpperCase()
-        ) || 'TOP',
-        offset: 0,
-        limit: ITEMS_PER_PAGE,
+        offset: feed.length,
       },
-      forceFetch: true,
-    };
-  },
-  props({ data: { loading, feed, currentUser, fetchMore } }) {
-    return {
-      loading,
-      feed,
-      currentUser,
-      fetchMore() {
-        return fetchMore({
-          variables: {
-            offset: feed.length,
-          },
-          updateQuery: (prev, { fetchMoreResult }) => {
-            if (!fetchMoreResult.data) { return prev; }
-            return Object.assign({}, prev, {
-              feed: [...prev.feed, ...fetchMoreResult.data.feed],
-            });
-          },
+      updateQuery: (prev, { fetchMoreResult }) => {
+        if (!fetchMoreResult.data) { return prev; }
+        return Object.assign({}, prev, {
+          feed: [...prev.feed, ...fetchMoreResult.data.feed],
         });
       },
-    };
-  },
+    }),
+  }),
 });
 
 const VOTE_MUTATION = gql`
@@ -122,15 +98,11 @@ const VOTE_MUTATION = gql`
 `;
 
 const withMutations = graphql(VOTE_MUTATION, {
-  props({ mutate }) {
-    return {
-      vote({ repoFullName, type }) {
-        return mutate({
-          variables: { repoFullName, type },
-        });
-      },
-    };
-  },
+  props: ({ mutate }) => ({
+    vote: ({ repoFullName, type }) => mutate({
+      variables: { repoFullName, type },
+    }),
+  }),
 });
 
 export default withMutations(withData(FeedPage));

@@ -1,7 +1,9 @@
 import React from 'react';
+import { propType } from 'graphql-anywhere';
+
 import FeedEntry from './FeedEntry';
 
-export default function Feed({ entries = [], loggedIn, onVote, onLoadMore }) {
+const Feed = ({ entries = [], loggedIn, onVote, onLoadMore }) => {
   if (entries && entries.length) {
     return (
       <div> {
@@ -19,11 +21,13 @@ export default function Feed({ entries = [], loggedIn, onVote, onLoadMore }) {
     );
   }
   return <div />;
-}
+};
 
 Feed.propTypes = {
-  entries: React.PropTypes.arrayOf(FeedEntry.WrappedComponent.propTypes.entry),
+  entries: React.PropTypes.arrayOf(propType(FeedEntry.fragments.entry).isRequired),
   loggedIn: React.PropTypes.bool.isRequired,
   onVote: React.PropTypes.func.isRequired,
   onLoadMore: React.PropTypes.func.isRequired,
 };
+
+export default Feed;

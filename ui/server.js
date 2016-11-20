@@ -3,7 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/server';
 import { createNetworkInterface } from 'apollo-client';
 import { ApolloProvider } from 'react-apollo';
-import { getDataFromTree } from 'react-apollo/server';
+import { renderToStringWithData } from 'react-apollo/server';
 import { match, RouterContext } from 'react-router';
 import path from 'path';
 import 'isomorphic-fetch';
@@ -38,10 +38,13 @@ app.use((req, res) => {
         ssrMode: true,
         networkInterface: createNetworkInterface({
           uri: apiUrl,
-          credentials: 'same-origin',
-          // transfer request headers to networkInterface so that they're accessible to proxy server
-          // Addresses this issue: https://github.com/matthew-andrews/isomorphic-fetch/issues/83
-          headers: req.headers,
+          opts: {
+            credentials: 'same-origin',
+            // transfer request headers to networkInterface so that they're
+            // accessible to proxy server
+            // Addresses this issue: https://github.com/matthew-andrews/isomorphic-fetch/issues/83
+            headers: req.headers,
+          },
         }),
       });
 
@@ -51,13 +54,13 @@ app.use((req, res) => {
         </ApolloProvider>
       );
 
-      getDataFromTree(component).then((context) => {
-        const content = ReactDOM.renderToString(component);
+      renderToStringWithData(component).then((content) => {
+        const data = client.store.getState().apollo.data;
         res.status(200);
 
         const html = (<Html
           content={content}
-          state={{ apollo: { data: context.store.getState().apollo.data } }}
+          state={{ apollo: { data } }}
         />);
         res.send(`<!doctype html>\n${ReactDOM.renderToStaticMarkup(html)}`);
         res.end();
